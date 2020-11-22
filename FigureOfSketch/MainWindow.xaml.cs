@@ -67,6 +67,8 @@ namespace FigureOfSketch
             GrabBag.ImgHeight = 600;
             GrabBag.Span = SelectedSpan;
 
+            btnStart.IsEnabled = false;
+
             Worker = new BackgroundWorker();
             Worker.DoWork += ExecuteTest;
             Worker.RunWorkerAsync();
@@ -86,6 +88,7 @@ namespace FigureOfSketch
         private void btnStop_Click(object sender, RoutedEventArgs e)
         {
             GrabBag.Cancel();
+            btnStart.IsEnabled = true;
         }
         #endregion
 

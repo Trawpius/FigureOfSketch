@@ -23,6 +23,7 @@ namespace FigureOfSketch.Objects
         private int _imgHeight;
         private int _imgWidth;
         private double _timeRemaining;
+        private TimeSpan _span;
         #endregion
 
         #region Initialization
@@ -87,7 +88,15 @@ namespace FigureOfSketch.Objects
             }
         }
 
-        public TimeSpan Span { get; set; } = new TimeSpan(0, 10, 0);
+        public TimeSpan Span
+        {
+            get { return _span; }
+            set
+            {
+                _span = value;
+                OnPropertyChanged();
+            }
+        }
 
         public double TimeTotal
         {
@@ -133,7 +142,8 @@ namespace FigureOfSketch.Objects
                 s.Start();
                 while (s.Elapsed < Span && !Skipped)
                 {
-                    TimeRemaining = (Span - s.Elapsed).TotalSeconds;
+                    TimeRemaining =  ((Span - s.Elapsed).TotalSeconds / TimeTotal)*100;
+
                 }
                 s.Stop();
                 s.Reset();
