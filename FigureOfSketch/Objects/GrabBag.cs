@@ -48,7 +48,11 @@ namespace FigureOfSketch.Objects
             {
                 _dir = value;
                 Files = (from x in Directory.GetFiles(value)
-                                  select Path.GetFileName(x)).ToArray();
+                         where x.ToLower().EndsWith("jpg") ||
+                         x.ToLower().EndsWith("jpeg") ||
+                         x.ToLower().EndsWith("bmp") ||
+                         x.ToLower().EndsWith("png")
+                         select Path.GetFileName(x)).ToArray();
             }
         }
         public int Blur

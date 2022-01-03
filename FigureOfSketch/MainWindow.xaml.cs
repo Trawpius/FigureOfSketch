@@ -122,6 +122,8 @@ namespace FigureOfSketch
         #region UI Events
         private void buttonClose_Click(object sender, RoutedEventArgs e)
         {
+            if (GrabBag.IsRunning)
+                GrabBag.Cancel();
             this.Close();
         }
 
