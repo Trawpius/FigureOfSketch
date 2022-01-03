@@ -5,80 +5,108 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 
-using VieCommune.Serialization;
 using FigureOfSketch.Objects;
 using System.IO;
 using System.Windows.Controls;
 using System.ComponentModel;
 using System.Collections.ObjectModel;
+using System.Windows.Input;
+using System.Runtime.CompilerServices;
+using System.Windows.Forms;
 
 namespace FigureOfSketch
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow : Window
+    public partial class MainWindow : Window, INotifyPropertyChanged
     {
+
+        private string _baseDirectory;
+
         public MainWindow()
         {
-            InitializeComponent();
+            BaseDirectory = Configuration.Current.Directory;
 
-            Configuration config = XmlSerializerExt<Configuration>.DeserializeObject("Config.xml");
-
-            Dir = config.Directory;
+            InitializeComponent();            
             InitializeDirectory();
 
             GrabBag = new GrabBag();
+
             this.DataContext = this;
-            spContent.DataContext = GrabBag;
+            gridContent.DataContext = GrabBag;
         }
 
-        #region Properties
-        public string Dir { get; set; }
-
-        public string SelectedDir { get; set; }
-        public TimeSpan SelectedSpan { get; set; }
-
-        public GrabBag GrabBag { get; set; }
-        public BackgroundWorker Worker { get; set; }
-
-        public List<TimeSpan> Times { get; set; } = 
-            new List<TimeSpan>() { new TimeSpan(0, 0, 30), new TimeSpan(0, 1, 0), new TimeSpan(0, 1, 30), new TimeSpan(0, 2, 0), new TimeSpan(0, 5, 30), new TimeSpan(0, 10, 0), new TimeSpan(120,0,0) };
-
-        public ObservableCollection<string> Directories { get; set; } = new ObservableCollection<string>();
-        #endregion
+        
 
         #region Initialization
         private void InitializeDirectory()
         {
-            IEnumerable<string> directories = (from x in Directory.GetDirectories(Dir) select Path.GetFileName(x));
-            
-            foreach(string dir in directories)
+            if(cmbContent!=null)
+                cmbContent.SelectedIndex = -1;
+
+            Directories.Clear();
+            IEnumerable<string> directories = (from x in Directory.GetDirectories(BaseDirectory) select Path.GetFileName(x));
+
+            foreach (string dir in directories)
             {
                 Directories.Add(dir);
             }
+            if (cmbContent != null)
+                cmbContent.SelectedIndex = 0;
         }
         #endregion
 
-        #region Events
-        private void Button_Click(object sender, RoutedEventArgs e)
+
+
+        #region Properties
+        public string BaseDirectory 
         {
-            GrabBag.Dir = SelectedDir;
-            GrabBag.ImgHeight = 600;
-            GrabBag.Span = SelectedSpan;
-
-            btnStart.IsEnabled = false;
-
-            Worker = new BackgroundWorker();
-            Worker.DoWork += ExecuteTest;
-            Worker.RunWorkerAsync();
+            get { return _baseDirectory; }
+            set
+            {
+                _baseDirectory = value;
+                Configuration.Current.Directory = _baseDirectory;
+                Configuration.Save();
+                InitializeDirectory();
+                OnPropertyChanged();
+            }
         }
+        public string ActiveDirectory { get; set; }
+
+        public GrabBag GrabBag { get; set; }
+        public BackgroundWorker Worker { get; set; }
+
+        public ObservableCollection<string> Directories { get; set; } = new ObservableCollection<string>();
+        #endregion
+
+
+        #region Functionality Events
 
         public void ExecuteTest(object sender, DoWorkEventArgs args)
         {
             GrabBag.Execute();
         }
-       
+
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+            if (GrabBag.IsRunning)
+                GrabBag.Unpause();
+            else
+            {
+                GrabBag.ActiveDirectory = ActiveDirectory;
+                GrabBag.Span = new TimeSpan(0, 0, Convert.ToInt16(timeSlider.Value));
+
+                Worker = new BackgroundWorker();
+                Worker.DoWork += ExecuteTest;
+                Worker.RunWorkerAsync();
+            }
+        }
+
+        private void btnPause_Click(object sender, RoutedEventArgs e)
+        {
+            GrabBag.Pause();
+        }
 
         private void btnNext_Click(object sender, RoutedEventArgs e)
         {
@@ -88,18 +116,71 @@ namespace FigureOfSketch
         private void btnStop_Click(object sender, RoutedEventArgs e)
         {
             GrabBag.Cancel();
-            btnStart.IsEnabled = true;
         }
         #endregion
 
-        private void cmbContent_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        #region UI Events
+        private void buttonClose_Click(object sender, RoutedEventArgs e)
         {
-            SelectedDir= Path.Combine(Dir, cmbContent.SelectedItem.ToString());
+            this.Close();
         }
 
-        private void cmbTime_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void buttonMinimize_Click(object sender, RoutedEventArgs e)
         {
-            SelectedSpan= (TimeSpan)cmbTime.SelectedItem;
+            this.WindowState = WindowState.Minimized;
         }
+
+        private void buttonMaximize_Click(object sender, RoutedEventArgs e)
+        {
+            if (WindowState == WindowState.Maximized)
+                this.WindowState = WindowState.Normal;
+            else
+                this.WindowState = WindowState.Maximized;
+        }
+
+        private void Grid_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            this.DragMove();
+        }
+
+        private void tabFileControl_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+            TabItem tab = sender as TabItem;
+
+            if (tab.IsSelected == true)
+                tab.IsSelected = false;
+            else
+                tab.IsSelected = true;
+        }
+
+        private void cmbContent_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if(cmbContent.SelectedItem != null)
+                ActiveDirectory = Path.Combine(BaseDirectory, cmbContent.SelectedItem.ToString());
+        }
+
+        private void btnOpenFileExplorer_Click(object sender, RoutedEventArgs e)
+        {
+            FolderBrowserDialog dialog = new FolderBrowserDialog();
+            DialogResult result = dialog.ShowDialog();
+            if (result == System.Windows.Forms.DialogResult.OK && !string.IsNullOrWhiteSpace(dialog.SelectedPath))
+            {
+                BaseDirectory = dialog.SelectedPath;
+            }
+        }
+        #endregion
+
+        #region NotifyProperty
+        public event PropertyChangedEventHandler PropertyChanged;
+
+        protected void OnPropertyChanged([CallerMemberName] string name = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+        }
+
+
+        #endregion
+
+        
     }
 }

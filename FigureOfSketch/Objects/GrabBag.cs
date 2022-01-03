@@ -1,10 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Runtime.CompilerServices;
 using System.Diagnostics;
 using System.Windows;
@@ -20,64 +17,31 @@ namespace FigureOfSketch.Objects
         private string _dir;
         private string _currentimg;
         private double _timeTotal;
-        private int _imgHeight;
-        private int _imgWidth;
         private double _timeRemaining;
         private TimeSpan _span;
+        private int _blur;
         #endregion
 
         #region Initialization
         public GrabBag()
         {
             Rand = new Random();
+            Blur = 0;
         }
         #endregion
+
 
         #region Private Properties
         private string[] Files { get; set; }
-
-        private Random Rand { get; set; }
-
-        private bool Skipped { get; set; } = false;
-
-        private bool Cancelled { get; set; } = false;
-
         private int Min { get; set; }
         private int Max { get; set; }
+        private Random Rand { get; set; }
+        private BagState State { get; set; } = BagState.Stopped;
         #endregion
 
         #region Public Properties
-        public string CurrentImg
-        {
-            get { return _currentimg; }
-            set
-            {
-                _currentimg = value;
-                OnPropertyChanged();
-            }
-        }
 
-        public int ImgHeight
-        {
-            get { return _imgHeight; }
-            set
-            {
-                _imgHeight = value;
-                OnPropertyChanged();
-            }
-        }
-
-        public int ImgWidth
-        {
-            get { return _imgWidth; }
-            set
-            {
-                _imgWidth= value;
-                OnPropertyChanged();
-            }
-        }
-
-        public string Dir
+        public string ActiveDirectory
         {
             get { return _dir; }
             set
@@ -87,7 +51,25 @@ namespace FigureOfSketch.Objects
                                   select Path.GetFileName(x)).ToArray();
             }
         }
-
+        public int Blur
+        {
+            get { return _blur; }
+            set
+            {
+                _blur = value;
+                OnPropertyChanged();
+            }
+        }
+        public string CurrentImg
+        {
+            get { return _currentimg; }
+            set
+            {
+                _currentimg = value;
+                OnPropertyChanged();
+            }
+        }
+        public bool IsRunning { get { return (State!=BagState.Stopped); } }
         public TimeSpan Span
         {
             get { return _span; }
@@ -97,17 +79,6 @@ namespace FigureOfSketch.Objects
                 OnPropertyChanged();
             }
         }
-
-        public double TimeTotal
-        {
-            get { return _timeTotal; }
-            set
-            {
-                _timeTotal = value;
-                OnPropertyChanged();
-            }
-        }
-
         public double TimeRemaining
         {
             get { return _timeRemaining; }
@@ -117,39 +88,52 @@ namespace FigureOfSketch.Objects
                 OnPropertyChanged();
             }
         }
+        public double TimeTotal
+        {
+            get { return _timeTotal; }
+            set
+            {
+                _timeTotal = value;
+                OnPropertyChanged();
+            }
+        }
         #endregion
+
 
         public void Execute()
         {
             if (!Initialize())
                 return;
 
-            while (!Cancelled)
+            while (State != BagState.Stopped)
             {
+                State = BagState.Running;
                 int ind = Convert.ToInt32(Math.Round(Rand.NextDouble() * (Max - Min) + Min));
                 Action act = new Action(() => 
                 {
-                    CurrentImg = Path.Combine(Dir, Files[ind]);
-                    Image img = Image.FromFile(CurrentImg);
-                    int height = img.Height;
-                    ImgWidth = (img.Width * ImgHeight) / height;
-
+                    CurrentImg = Path.Combine(ActiveDirectory, Files[ind]);
                 });
 
                 Application.Current.Dispatcher.BeginInvoke(act);
 
                 Stopwatch s = new Stopwatch();
                 s.Start();
-                while (s.Elapsed < Span && !Skipped)
-                {
-                    TimeRemaining =  ((Span - s.Elapsed).TotalSeconds / TimeTotal)*100;
 
+                while (s.Elapsed < Span && (State != BagState.Stopped && State != BagState.Skipped))
+                {
+                    // Blur Image if Paused
+                    if(State==BagState.Paused)
+                    {
+                        Blur = 200;
+                        while (State == BagState.Paused) { }
+                        Blur = 0;
+                    }
+
+                    TimeRemaining =  ((Span - s.Elapsed).TotalSeconds / TimeTotal)*100;
                 }
                 s.Stop();
                 s.Reset();
-                Skipped = false;
             }
-           
         }
 
         private bool Initialize()
@@ -160,22 +144,30 @@ namespace FigureOfSketch.Objects
             if (Max < 1)
                 return false;
 
-            Cancelled = false;
-            Skipped = false;
+            State = BagState.Running;
             TimeTotal = Span.TotalSeconds;
 
             return true;
         }
 
-        public void Next()
-        {
-            Skipped = true;
-        }
-
         public void Cancel()
         {
-            Skipped = true;
-            Cancelled = true;
+            State = BagState.Stopped;
+        }
+
+        public void Next()
+        {
+            State = BagState.Skipped;
+        }
+
+        public void Pause()
+        {
+            State = BagState.Paused;
+        }
+
+        public void Unpause()
+        {
+            State = BagState.Running;
         }
 
         #region Event Handler
@@ -184,5 +176,13 @@ namespace FigureOfSketch.Objects
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
         }
         #endregion
+    }
+
+    public enum BagState
+    {
+        Running,
+        Paused,
+        Skipped,
+        Stopped
     }
 }
