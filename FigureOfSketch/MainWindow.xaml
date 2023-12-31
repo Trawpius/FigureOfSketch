@@ -8,7 +8,7 @@
         
         WindowStyle="None"
         AllowsTransparency="True"
-        ResizeMode="NoResize"
+        ResizeMode="CanResize"
         Background="Transparent"
         Title="Figure of Sketch" 
         MinHeight="900" 
@@ -96,7 +96,8 @@
                     <TabItem 
                         Name="tabFileControl"
                         Style="{StaticResource tabitem}" 
-                        Header="Settings" MouseUp="tabFileControl_MouseUp" >
+                        Header="Settings" 
+                        MouseUp="tabFileControl_MouseUp" >
                         <Grid 
                             Name="panelSettings"
                             Margin="10">

@@ -48,6 +48,7 @@ namespace FigureOfSketch
             Directories.Clear();
             IEnumerable<string> directories = (from x in Directory.GetDirectories(BaseDirectory) select Path.GetFileName(x));
 
+            Directories.Add("ALL");
             foreach (string dir in directories)
             {
                 Directories.Add(dir);
@@ -149,16 +150,21 @@ namespace FigureOfSketch
         {
             TabItem tab = sender as TabItem;
 
-            if (tab.IsSelected == true)
-                tab.IsSelected = false;
-            else
-                tab.IsSelected = true;
+            tab.IsSelected = !(tab.IsSelected);
         }
 
         private void cmbContent_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if(cmbContent.SelectedItem != null)
-                ActiveDirectory = Path.Combine(BaseDirectory, cmbContent.SelectedItem.ToString());
+            if (cmbContent.SelectedItem != null)
+            {
+                if (cmbContent.SelectedItem.ToString().Equals("ALL"))
+                    ActiveDirectory = BaseDirectory;
+                else
+                    ActiveDirectory = Path.Combine(BaseDirectory, cmbContent.SelectedItem.ToString());
+            }
+            else
+                ActiveDirectory = BaseDirectory;
+
         }
 
         private void btnOpenFileExplorer_Click(object sender, RoutedEventArgs e)

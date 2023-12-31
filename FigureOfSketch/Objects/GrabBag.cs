@@ -47,12 +47,12 @@ namespace FigureOfSketch.Objects
             set
             {
                 _dir = value;
-                Files = (from x in Directory.GetFiles(value)
+                Files = (from x in Directory.GetFiles(value, "*.*", SearchOption.AllDirectories)
                          where x.ToLower().EndsWith("jpg") ||
                          x.ToLower().EndsWith("jpeg") ||
                          x.ToLower().EndsWith("bmp") ||
                          x.ToLower().EndsWith("png")
-                         select Path.GetFileName(x)).ToArray();
+                         select x).ToArray();
             }
         }
         public int Blur
@@ -115,7 +115,7 @@ namespace FigureOfSketch.Objects
                 int ind = Convert.ToInt32(Math.Round(Rand.NextDouble() * (Max - Min) + Min));
                 Action act = new Action(() => 
                 {
-                    CurrentImg = Path.Combine(ActiveDirectory, Files[ind]);
+                    CurrentImg = Files[ind];
                 });
 
                 Application.Current.Dispatcher.BeginInvoke(act);
